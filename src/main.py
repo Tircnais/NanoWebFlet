@@ -1,5 +1,5 @@
 import flet as ft
-import requests
+import httpx
 import asyncio
 import os
 
@@ -17,7 +17,8 @@ async def fetch_lyrics(artista, titulo):
             url = f"https://api.lyrics.ovh/v1/{artista}/{titulo}"
             # asyncio.to_thread Ejecuta consultas (no asíncrono) en un hilo separado. Sin bloquear la UI
             # timeout = 10 previene espera eterna si hau problemas de red.
-            response = await asyncio.to_thread(requests.get, url, timeout = 10)
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, timeout=10)
             if(response.status_code == 200):
                 return response.json()
             return {"error": "Canción no encontrada"}
