@@ -1,7 +1,7 @@
 import flet as ft
 import httpx
-import asyncio
 import os
+import platform
 
 async def fetch_lyrics(artista, titulo):
         """Consulta la letra
@@ -29,6 +29,32 @@ async def fetch_lyrics(artista, titulo):
     
     
 async def main(page: ft.Page):
+    def window_event(e: ft.WindowEvent):
+        if e.type == ft.WindowEventType.CLOSE:
+            page.show_dialog(confirm_dialog)
+            page.update()
+
+    page.window.prevent_close = True
+    page.window.on_event = window_event
+
+    async def handle_yes_click(e: ft.Event[ft.Button]):
+        await page.window.destroy()
+
+    def handle_no_click(e: ft.Event[ft.OutlinedButton]):
+        page.pop_dialog()
+        page.update()
+
+    confirm_dialog = ft.AlertDialog(
+        modal=True,
+        title=ft.Text("Por favor, confirme"),
+        content=ft.Text("¿De verdad quieres salir de esta aplicación?"),
+        actions=[
+            ft.Button(content="Sí", on_click=handle_yes_click),
+            ft.OutlinedButton(content="No", on_click=handle_no_click),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+    
     # print("✅ App iniciada correctamente")  # 👈 Línea de depuración
     page.title = "Letra de tu música"
     page.theme_mode = ft.ThemeMode.DARK
@@ -39,17 +65,19 @@ async def main(page: ft.Page):
     page.padding = 20
     page.bgcolor = ft.Colors.GREY_900
     # Scroll en la pagina
-    # page.scroll = ft.ScrollMode.AUTO
-    # page.vertical_alignment = ft.CrossAxisAlignment.START
-    # page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.window.width = 830
-    page.window.height = 730
+    page.scroll = ft.ScrollMode.AUTO
+    page.vertical_alignment = ft.CrossAxisAlignment.START
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    # Tamaño predeterminado para plataforma
+    if page.platform == ft.PagePlatform.WINDOWS:
+        page.window.width = 830
+        page.window.height = 730
     
     artist_field = ft.TextField(
         # Texto flotante que se eleva al enfocar
         label = "Artista",
         # Placeholder, texto de ayuda
-        hint_text = "Ej.: Julio Iglesias",
+        hint_text = "Ej.: Rels B",
         # Estilos
         border_color = ft.Colors.PURPLE_400,
         focused_border_color = ft.Colors.PURPLE_300,
@@ -60,11 +88,11 @@ async def main(page: ft.Page):
         border_radius = 12
     )
     
-    title_field = ft.TextField(
+    song_field = ft.TextField(
         # Texto flotante que se eleva al enfocar
         label = "Canción",
         # Placeholder, texto de ayuda
-        hint_text = "Ej.: Hola",
+        hint_text = "Ej.: La Última Canción",
         # Estilos
         border_color = ft.Colors.PURPLE_400,
         focused_border_color = ft.Colors.PURPLE_300,
@@ -84,8 +112,19 @@ async def main(page: ft.Page):
             padding = 15,
             shape = ft.RoundedRectangleBorder(radius=10),
         ),
-        # on_click=search_click,  # Añadir evento de click
         visible = True  # Cambiado a True para probar
+    )
+    
+    eraser_btn = ft.Button(
+        content = "Borrar campos",
+        icon = ft.Icons.CLEANING_SERVICES,
+        style = ft.ButtonStyle(
+            color = ft.Colors.WHITE,
+            bgcolor = ft.Colors.DEEP_PURPLE_600,
+            padding = 15,
+            shape = ft.RoundedRectangleBorder(radius=10),
+        ),
+        visible = True
     )
     
     loading = ft.ProgressRing(width=25, height=25, stroke_width=5, color=ft.Colors.PURPLE_400, visible=False)
@@ -114,7 +153,8 @@ async def main(page: ft.Page):
             shape = ft.RoundedRectangleBorder(radius=10),
         ),
         visible = True,
-        tooltip = "Da clic"
+        tooltip = "Da clic",
+        col={ft.ResponsiveRowBreakpoint.MD: 4},
     )
     
     ejemploB_btn = ft.Button(
@@ -126,7 +166,8 @@ async def main(page: ft.Page):
             shape = ft.RoundedRectangleBorder(radius=10),
         ),
         visible = True,
-        tooltip = "Da clic"
+        tooltip = "Da clic",
+        col={ft.ResponsiveRowBreakpoint.MD: 4},
     )
     
     ejemploC_btn = ft.Button(
@@ -138,12 +179,13 @@ async def main(page: ft.Page):
             shape = ft.RoundedRectangleBorder(radius=10),
         ),
         visible = True,
-        tooltip = "Da clic"
+        tooltip = "Da clic",
+        col={ft.ResponsiveRowBreakpoint.MD: 4},
     )
     
     async def search_click(e):
         # 1. Validacion
-        if not artist_field.value or not title_field.value.strip():
+        if not artist_field.value or not song_field.value.strip():
             result_text.value = "❌ Por favor ingresa artista y canción."
             result_text.color = ft.Colors.RED_300
             copy_btn.visible = False
@@ -152,6 +194,7 @@ async def main(page: ft.Page):
             
         # 2. Estado de carga
         search_btn.disabled = True
+        eraser_btn.disabled = True
         loading.visible = True
         result_text.value = "Buscando la letra..."
         result_text.color = ft.Colors.PURPLE_300
@@ -159,7 +202,7 @@ async def main(page: ft.Page):
         page.update()
         
         # 3. Llamada a la API
-        data = await fetch_lyrics(artist_field.value.strip(), title_field.value.strip())
+        data = await fetch_lyrics(artist_field.value.strip(), song_field.value.strip())
         
         # 4. Actualizar UI con resultado
         if "error" in data:
@@ -173,6 +216,7 @@ async def main(page: ft.Page):
             copy_btn.visible = True
         
         search_btn.disabled = False
+        eraser_btn.disabled = False
         loading.visible = False
         page.update()    
     
@@ -184,7 +228,12 @@ async def main(page: ft.Page):
         page.overlay.append(snack_bar)
         snack_bar.open = True
         page.update()
-    
+        
+    async def eraser_click(e):
+        artist_field.value = ""
+        song_field.value = ""
+        page.update()
+        
     # 2. Definir la función que maneja el clic
     async def btnExtraeTexto_click(e):
         # Obtener texto del botón
@@ -200,11 +249,12 @@ async def main(page: ft.Page):
             cancion = ""
         # Asignar valores .await 
         artist_field.value = artista
-        title_field.value = cancion
+        song_field.value = cancion
         page.update()
         await search_click(e)
         
     search_btn.on_click = search_click
+    eraser_btn.on_click = eraser_click
     copy_btn.on_click = copy_click
     
     # Ejemplos clickeables
@@ -230,71 +280,150 @@ async def main(page: ft.Page):
         ft.Container(
             content = ft.Column([
                 # Cabecera con gradiante
-                ft.Container(
-                    content = cabecera,
-                    padding = 30,
-                    # degradado
-                    gradient = ft.LinearGradient(
-                        begin = ft.Alignment.TOP_LEFT,
-                        end = ft.Alignment.BOTTOM_RIGHT,
-                        colors = [ft.Colors.PURPLE_900, ft.Colors.DEEP_PURPLE_500, ft.Colors.PURPLE_900]
-                    ),
-                    shadow = ft.BoxShadow(
-                        spread_radius = 1,
-                        blur_radius = 15,
-                        color = ft.Colors.with_opacity(0.3, ft.Colors.BLACK),
-                    ),
-                    border_radius = 20,
-                    width = 750,
+                ft.ResponsiveRow(
+                    run_spacing={ft.ResponsiveRowBreakpoint.XS: 10},
+                    controls=[
+                        ft.Container(
+                            content = cabecera,
+                            padding = 30,
+                            # degradado
+                            gradient = ft.LinearGradient(
+                                begin = ft.Alignment.TOP_LEFT,
+                                end = ft.Alignment.BOTTOM_RIGHT,
+                                colors = [ft.Colors.PURPLE_900, ft.Colors.DEEP_PURPLE_500, ft.Colors.PURPLE_900]
+                            ),
+                            shadow = ft.BoxShadow(
+                                spread_radius = 1,
+                                blur_radius = 15,
+                                color = ft.Colors.with_opacity(0.3, ft.Colors.BLACK),
+                            ),
+                            border_radius = 20,
+                            width = 750,
+                            # Disposicion por tamaño
+                            col={
+                                ft.ResponsiveRowBreakpoint.XS: 12,
+                                ft.ResponsiveRowBreakpoint.MD: 12,
+                                ft.ResponsiveRowBreakpoint.LG: 12,
+                            },
+                        ),
+                    ],
                 ),
                 
-                # Campos de entrada
-                ft.Container(content=artist_field, width=750),
-                ft.Container(content=title_field, width=750),
-                
-                # Botón de búsqueda
-                ft.Row([search_btn, loading], alignment=ft.MainAxisAlignment.CENTER, spacing=15),
-                
-                # Ejemplos para uso
-                ft.Row([labelEjemplos], alignment=ft.MainAxisAlignment.CENTER, spacing=15),
-                ft.Row([ejemploA_btn, ejemploB_btn, ejemploC_btn], alignment=ft.MainAxisAlignment.CENTER, spacing=15),
-                
-                # Resultados
-                ft.Container(
-                    content = resultados,
-                    bgcolor = "#1A1A1A",
-                    border = ft.Border.all(width=2, color=ft.Colors.PURPLE_800),
-                    border_radius = 15,
-                    padding = 20,
-                    width = 750,
-                    height = 150,
-                    # expand = True,
-                    # degradado
-                    gradient = ft.LinearGradient(
-                        begin = ft.Alignment.TOP_LEFT,
-                        end = ft.Alignment.BOTTOM_RIGHT,
-                        colors = [ft.Colors.PURPLE_900, ft.Colors.DEEP_PURPLE_500, ft.Colors.PURPLE_900]
-                    ),
-                    shadow = ft.BoxShadow(
-                        spread_radius = 1,
-                        blur_radius = 15,
-                        color = ft.Colors.with_opacity(0.3, ft.Colors.BLACK),
-                        offset = ft.Offset(0, 4),
-                    ),
+                ft.ResponsiveRow(
+                    run_spacing={ft.ResponsiveRowBreakpoint.XS: 10},
+                    controls=[
+                        # Campos de entrada
+                        ft.Container(
+                            content=artist_field, width=750,
+                            # Disposicion por tamaño
+                            col={
+                                ft.ResponsiveRowBreakpoint.XS: 12,
+                                ft.ResponsiveRowBreakpoint.MD: 12,
+                                ft.ResponsiveRowBreakpoint.LG: 12,
+                            }
+                        ),
+                        ft.Container(
+                            content=song_field, width=750,
+                            # Disposicion por tamaño
+                            col={
+                                ft.ResponsiveRowBreakpoint.XS: 12,
+                                ft.ResponsiveRowBreakpoint.MD: 12,
+                                ft.ResponsiveRowBreakpoint.LG: 12,
+                            }
+                        ),
+                    ],
                 ),
                 
-                # Botón copiar
-                ft.Row([copy_btn], alignment=ft.MainAxisAlignment.CENTER),
+                ft.ResponsiveRow(
+                    run_spacing={ft.ResponsiveRowBreakpoint.XS: 10},
+                    controls=[
+                        # Botón de búsqueda
+                        ft.Row([search_btn, loading, eraser_btn], alignment=ft.MainAxisAlignment.CENTER, spacing=15,
+                               col={ft.ResponsiveRowBreakpoint.MD: 12},),
+                    ],
+                ),
+                
+                ft.ResponsiveRow(
+                    run_spacing={ft.ResponsiveRowBreakpoint.XS: 10},
+                    controls=[
+                        # Ejemplos para uso
+                        ft.Row([labelEjemplos], alignment=ft.MainAxisAlignment.CENTER, spacing=15,
+                               col={ft.ResponsiveRowBreakpoint.MD: 12}),
+                        # Lista de ejemplos con responsive
+                        ft.ResponsiveRow(
+                            run_spacing={ft.ResponsiveRowBreakpoint.XS: 10},
+                            controls=[
+                                ejemploA_btn, ejemploB_btn, ejemploC_btn
+                            ],
+                        ),
+                    ],
+                ),
+                
+                ft.ResponsiveRow(
+                    run_spacing={ft.ResponsiveRowBreakpoint.XS: 10},
+                    controls=[
+                        # Resultados
+                        ft.Container(
+                            content = resultados,
+                            bgcolor = "#1A1A1A",
+                            border = ft.Border.all(width=2, color=ft.Colors.PURPLE_800),
+                            border_radius = 15,
+                            padding = 20,
+                            width = 750,
+                            height = 150,
+                            # expand = True,
+                            # degradado
+                            gradient = ft.LinearGradient(
+                                begin = ft.Alignment.TOP_LEFT,
+                                end = ft.Alignment.BOTTOM_RIGHT,
+                                colors = [ft.Colors.PURPLE_900, ft.Colors.DEEP_PURPLE_500, ft.Colors.PURPLE_900]
+                            ),
+                            shadow = ft.BoxShadow(
+                                spread_radius = 1,
+                                blur_radius = 15,
+                                color = ft.Colors.with_opacity(0.3, ft.Colors.BLACK),
+                                offset = ft.Offset(0, 4),
+                            ),
+                            # Disposicion por tamaño
+                            col={
+                                ft.ResponsiveRowBreakpoint.XS: 12,
+                                ft.ResponsiveRowBreakpoint.MD: 12,
+                                ft.ResponsiveRowBreakpoint.LG: 12,
+                            },
+                        ),
+                    ],
+                ),
+                
+                ft.ResponsiveRow(
+                    run_spacing={ft.ResponsiveRowBreakpoint.XS: 10},
+                    controls=[
+                        # Botón copiar
+                        ft.Row([copy_btn], alignment=ft.MainAxisAlignment.CENTER,
+                               # Disposicion por tamaño
+                            col={
+                                ft.ResponsiveRowBreakpoint.XS: 12,
+                                ft.ResponsiveRowBreakpoint.MD: 12,
+                                ft.ResponsiveRowBreakpoint.LG: 12,
+                            }),
+                    ],
+                ),
             ], spacing=15, horizontal_alignment=ft.CrossAxisAlignment.CENTER, expand=True),
             expand = True
         ),
     )
     # print("🟢 UI cargada")
-    await page.window.center()
+    """
+    if platform.system() != "Android":
+        await page.window.center()
+    """
+    if page.platform in [ft.PagePlatform.WINDOWS, ft.PagePlatform.LINUX, ft.PagePlatform.MACOS]:
+        await page.window.center()
     page.update()
 
 # Programación asíncrona
 # async/await permite que la UI siga respondiendo
 # La petición se ejecuta sin bloquear
 # Experiencia de usuario profesional
+if __name__ == "__main__":
+    ft.run(main)
 ft.run(main)

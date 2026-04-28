@@ -1,11 +1,11 @@
 [project]
-name = "nanowebflet"
-version = "0.1.0"
+name = "LetraAppFlet"
+version = "1.1.1"
 description = ""
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-    { name = "Flet developer", email = "you@example.com" }
+    { name = "Cristian Aguirre", email = "aguirrecristian0004@gmail.com" }
 ]
 dependencies = [
     "flet>=0.84.0"
@@ -19,9 +19,9 @@ dev = [
 ]
 
 [tool.flet]
-org = "com.mycompany"
-product = "nanowebflet"
-company = "Flet"
+org = "com.dev_ca"
+product = "LetraAppFlet"
+company = "Dev-CA"
 copyright = "Copyright (C) 2023-2026 by Flet"
 
 [tool.flet.app]

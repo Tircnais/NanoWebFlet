@@ -23,6 +23,7 @@ For more details on running the app, refer to the [Getting Started Guide](https:
 ### Android
 
 ```bash
+flet clean
 flet build apk -v
 ```
 
@@ -31,6 +32,7 @@ For more details on building and signing `.apk` or `.aab`, refer to the [Android
 ### iOS
 
 ```bash
+flet clean
 flet build ipa -v
 ```
 
@@ -39,6 +41,7 @@ For more details on building and signing `.ipa`, refer to the [iOS Packaging Gui
 ### macOS
 
 ```bash
+flet clean
 flet build macos -v
 ```
 
@@ -47,6 +50,7 @@ For more details on building macOS package, refer to the [macOS Packaging Guide]
 ### Linux
 
 ```bash
+flet clean
 flet build linux -v
 ```
 
@@ -55,6 +59,7 @@ For more details on building Linux package, refer to the [Linux Packaging Guide]
 ### Windows
 
 ```bash
+flet clean
 flet build windows -v
 ```
 
@@ -63,6 +68,7 @@ For more details on building Windows package, refer to the [Windows Packaging Gu
 ### Web
 
 ```bash
+flet clean
 flet build web -v
 ```
 
