@@ -29,28 +29,67 @@ async def fetch_lyrics(artista, titulo):
     
     
 async def main(page: ft.Page):
+    dialog_open = {"value": False}
+
+    # 🔑 función única para mostrar diálogo
+    def show_exit_dialog():
+        if not dialog_open["value"]:
+            dialog_open["value"] = True
+            page.show_dialog(confirm_dialog)
+
+    # 🔑 confirmar salida
+    def handle_yes_click(e):
+        dialog_open["value"] = False
+
+        # Desktop
+        if page.platform in [
+            ft.PagePlatform.WINDOWS,
+            ft.PagePlatform.LINUX,
+            ft.PagePlatform.MACOS,
+        ]:
+            page.window.prevent_close = False
+            page.run_task(close_app)
+        else:
+            # Móvil / Web
+            page.window.destroy()  # fallback seguro
+
+    # 🔑 cancelar
+    def handle_no_click(e):
+        dialog_open["value"] = False
+        page.pop_dialog()
+
+    # 🔑 cierre async (desktop moderno)
+    async def close_app():
+        await page.window.close()
+
+    # 🔑 evento ventana (desktop)
     def window_event(e: ft.WindowEvent):
         if e.type == ft.WindowEventType.CLOSE:
-            page.show_dialog(confirm_dialog)
-            page.update()
+            show_exit_dialog()
 
-    page.window.prevent_close = True
-    page.window.on_event = window_event
+    # 🔑 botón back (Android / navegación)
+    def on_view_pop(e):
+        show_exit_dialog()
 
-    async def handle_yes_click(e: ft.Event[ft.Button]):
-        await page.window.destroy()
+    # 🔧 configurar eventos según plataforma
+    if page.platform in [
+        ft.PagePlatform.WINDOWS,
+        ft.PagePlatform.LINUX,
+        ft.PagePlatform.MACOS,
+    ]:
+        page.window.prevent_close = True
+        page.window.on_event = window_event
+    else:
+        page.on_view_pop = on_view_pop
 
-    def handle_no_click(e: ft.Event[ft.OutlinedButton]):
-        page.pop_dialog()
-        page.update()
-
+    # 🔑 diálogo
     confirm_dialog = ft.AlertDialog(
         modal=True,
         title=ft.Text("Por favor, confirme"),
         content=ft.Text("¿De verdad quieres salir de esta aplicación?"),
         actions=[
-            ft.Button(content="Sí", on_click=handle_yes_click),
-            ft.OutlinedButton(content="No", on_click=handle_no_click),
+            ft.Button("Sí", on_click=handle_yes_click),
+            ft.OutlinedButton("No", on_click=handle_no_click),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
     )
@@ -58,6 +97,7 @@ async def main(page: ft.Page):
     # print("✅ App iniciada correctamente")  # 👈 Línea de depuración
     page.title = "Letra de tu música"
     page.theme_mode = ft.ThemeMode.DARK
+    
     # ruta relativa a tu archivo .py
     # page.window.icon = r"E:\Documentos\...\src\assets\icon.ico"
     page.window.icon = os.path.join(os.path.dirname(__file__), "assets", "icon.ico")
@@ -232,6 +272,11 @@ async def main(page: ft.Page):
     async def eraser_click(e):
         artist_field.value = ""
         song_field.value = ""
+        result_text.value = ""
+        copy_btn.visible = False
+        snack_bar = ft.SnackBar(content=ft.Text("🧹 Se borró el artista y canción."))
+        page.overlay.append(snack_bar)
+        snack_bar.open = True
         page.update()
         
     # 2. Definir la función que maneja el clic
@@ -371,7 +416,6 @@ async def main(page: ft.Page):
                             padding = 20,
                             width = 750,
                             height = 150,
-                            # expand = True,
                             # degradado
                             gradient = ft.LinearGradient(
                                 begin = ft.Alignment.TOP_LEFT,
